@@ -9,7 +9,7 @@
 
 > An AI-powered web application that lets you chat with any website's content using natural language.
 
-🔗 **[Live Demo](https://chat-with-website.vercel.app)** | [GitHub Repository](https://github.com/harshith-eth/chat-with-website)
+🔗 **[Live Demo](https://chat-with-website-beta.vercel.app/)** | [GitHub Repository](https://github.com/harshith-eth/chat-with-website)
 
 ![Project Demo](https://source.unsplash.com/random/1200x630/?chat,ai,website)
 
