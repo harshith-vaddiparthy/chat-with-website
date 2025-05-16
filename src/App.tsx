@@ -13,7 +13,7 @@ const azureEndpoint = import.meta.env.VITE_AZURE_ENDPOINT;
 const azureApiKey = import.meta.env.VITE_AZURE_API_KEY;
 
 function App() {
-  const [url, setUrl] = useState('https://www.firecrawl.dev/');
+  const [url, setUrl] = useState('https://www.stack-ai.com/');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isChatReady, setIsChatReady] = useState(false);
   const [messages, setMessages] = useState<Array<{ type: 'user' | 'bot'; content: string; isTyping?: boolean }>>([]);
@@ -111,7 +111,10 @@ function App() {
     setMessages(prev => [...prev, { type: 'bot', content: '', isTyping: true }]);
     
     try {
-      const response = await fetch(azureEndpoint, {
+      // Construct the complete Azure OpenAI API URL
+      const apiUrl = `${azureEndpoint.trim()}openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview`;
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -368,9 +371,6 @@ function App() {
       </motion.div>
       <div className="text-center text-gray-300 space-y-1">
         <p className="text-sm">Built by Harshith Vaddiparthy</p>
-        <p className="text-sm flex items-center justify-center gap-1">
-          Powered by <span role="img" aria-label="fire">🔥</span> Firecrawl
-        </p>
       </div>
     </div>
   );
