@@ -114,6 +114,8 @@ function App() {
       // Construct the complete Azure OpenAI API URL
       const apiUrl = `${azureEndpoint.trim()}openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview`;
       
+      console.log("Using Azure API URL:", apiUrl); // Debug the constructed URL
+      
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
