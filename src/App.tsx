@@ -111,8 +111,11 @@ function App() {
     setMessages(prev => [...prev, { type: 'bot', content: '', isTyping: true }]);
     
     try {
-      // Construct the complete Azure OpenAI API URL
-      const apiUrl = `${azureEndpoint.trim()}openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview`;
+      // Construct the complete Azure OpenAI API URL with proper URL handling
+      const baseUrl = azureEndpoint.trim();
+      // Ensure the base URL ends with a slash
+      const formattedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+      const apiUrl = `${formattedBaseUrl}openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview`;
       
       console.log("Using Azure API URL:", apiUrl); // Debug the constructed URL
       
