@@ -115,7 +115,7 @@ function App() {
       const baseUrl = azureEndpoint.trim();
       // Ensure the base URL ends with a slash
       const formattedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
-      const apiUrl = `${formattedBaseUrl}openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview`;
+      const apiUrl = `${formattedBaseUrl}openai/deployments/gpt-4o/chat/completions?api-version=2024-08-01-preview`;
       
       console.log("Using Azure API URL:", apiUrl); // Debug the constructed URL
       
@@ -149,7 +149,13 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response from Azure OpenAI');
+        const errorText = await response.text();
+        console.error('Azure API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText
+        });
+        throw new Error(`Failed to get response from Azure OpenAI: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -165,8 +171,9 @@ function App() {
         index === prev.length - 1 ? { type: 'bot', content: botResponse } : msg
       ));
     } catch (error) {
+      console.error('Chat error:', error);
       setMessages(prev => prev.map((msg, index) => 
-        index === prev.length - 1 ? { type: 'bot', content: 'Sorry, I encountered an error. Please try again.' } : msg
+        index === prev.length - 1 ? { type: 'bot', content: `Sorry, I encountered an error. Please try again. Error: ${error instanceof Error ? error.message : 'Unknown error'}` } : msg
       ));
     }
   };
