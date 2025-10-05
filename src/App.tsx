@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Globe, Send, Loader2, ArrowLeft } from 'lucide-react';
+import { Bot, Globe, Send, Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
 import FirecrawlApp, { ScrapeResponse, CrawlResponse } from '@mendable/firecrawl-js';
-
-// Initialize Firecrawl client
-const firecrawl = new FirecrawlApp({
-  apiKey: import.meta.env.VITE_FIRECRAWL_API_KEY
-});
 
 // Azure OpenAI configuration
 const azureEndpoint = import.meta.env.VITE_AZURE_ENDPOINT;
 const azureApiKey = import.meta.env.VITE_AZURE_API_KEY;
+const firecrawlApiKey = import.meta.env.VITE_FIRECRAWL_API_KEY;
+
+// Initialize Firecrawl client only if API key is available
+const firecrawl = firecrawlApiKey ? new FirecrawlApp({
+  apiKey: firecrawlApiKey
+}) : null;
+
+// Check if we're in demo mode (missing API keys)
+const isDemoMode = !firecrawlApiKey || !azureEndpoint || !azureApiKey;
 
 function App() {
   const [url, setUrl] = useState('https://www.stack-ai.com/');
@@ -50,6 +54,44 @@ function App() {
     setIsProcessing(true);
     setProcessingSteps([]);
     try {
+      if (isDemoMode) {
+        // Demo mode - simulate processing
+        addProcessingStep('🎭 Demo Mode: Simulating Firecrawl engine...');
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        addProcessingStep('🎭 Demo Mode: Simulating website processing...');
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        addProcessingStep('🎭 Demo Mode: Simulating content crawling...');
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        addProcessingStep('🎭 Demo Mode: Preparing chat interface...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Set demo content
+        const demoContent = `This is a demo of the Chat with Website application. 
+        
+In the full version, this app would:
+- Crawl and extract content from ${url}
+- Process the website's text, links, and structure
+- Enable you to ask questions about the website's content
+- Use AI to provide intelligent answers based on the actual website data
+
+To use the full functionality, please configure:
+1. VITE_FIRECRAWL_API_KEY - Get it from https://firecrawl.dev
+2. VITE_AZURE_ENDPOINT - Your Azure OpenAI endpoint
+3. VITE_AZURE_API_KEY - Your Azure OpenAI API key`;
+
+        setCrawledContent(demoContent);
+        setIsChatReady(true);
+        setMessages([{ 
+          type: 'bot', 
+          content: `🎭 Demo Mode Active!\n\nI'm showing you what the interface looks like. In the full version with API keys configured, I would have processed ${url} and could answer questions about its actual content.\n\nTry typing a message to see the chat interface in action!` 
+        }]);
+        return;
+      }
+
+      // Real mode - actual processing
       addProcessingStep('Starting up Firecrawl engine...');
       await new Promise(resolve => setTimeout(resolve, 800));
       
@@ -57,7 +99,7 @@ function App() {
       console.log('Starting website processing with Firecrawl...');
       
       addProcessingStep('Crawling website content...');
-      const result = await firecrawl.scrapeUrl(url, {
+      const result = await firecrawl!.scrapeUrl(url, {
         formats: ['markdown', 'html']
       });
 
@@ -111,19 +153,37 @@ function App() {
     setMessages(prev => [...prev, { type: 'bot', content: '', isTyping: true }]);
     
     try {
-      // Construct the complete Azure OpenAI API URL with proper URL handling
-      const baseUrl = azureEndpoint.trim();
-      // Ensure the base URL ends with a slash
+      if (isDemoMode) {
+        // Demo mode - simulate response
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        const demoResponses = [
+          `🎭 Demo Mode: That's a great question! In the full version with API keys configured, I would analyze the actual content from ${url} and provide a detailed answer based on what's actually on the website.`,
+          `🎭 Demo Mode: I can see you're interested in "${userMessage}". With the proper API configuration, I'd search through the website's content and give you specific information about that topic.`,
+          `🎭 Demo Mode: Interesting! Once you set up the Firecrawl and Azure OpenAI API keys, I'll be able to answer questions like this by analyzing the real website content.`,
+          `🎭 Demo Mode: Good question! The full version of this app uses AI to understand the website's content and answer your questions intelligently. Configure the API keys to try it out!`
+        ];
+        
+        const randomResponse = demoResponses[Math.floor(Math.random() * demoResponses.length)];
+        
+        setMessages(prev => prev.map((msg, index) => 
+          index === prev.length - 1 ? { type: 'bot', content: randomResponse } : msg
+        ));
+        return;
+      }
+
+      // Real mode - actual API call
+      const baseUrl = azureEndpoint!.trim();
       const formattedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
       const apiUrl = `${formattedBaseUrl}openai/deployments/gpt-4o/chat/completions?api-version=2024-08-01-preview`;
       
-      console.log("Using Azure API URL:", apiUrl); // Debug the constructed URL
+      console.log("Using Azure API URL:", apiUrl);
       
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'api-key': azureApiKey,
+          'api-key': azureApiKey!,
         },
         body: JSON.stringify({
           messages: [
@@ -161,11 +221,10 @@ function App() {
       const data = await response.json();
       let botResponse = data.choices[0].message.content;
       
-      // Clean up the response formatting
       botResponse = botResponse
-        .replace(/\n\s*\n/g, '\n') // Remove extra blank lines
-        .replace(/^\s+|\s+$/g, '') // Trim whitespace
-        .replace(/([.!?])\s+/g, '$1\n'); // Add line break after sentences
+        .replace(/\n\s*\n/g, '\n')
+        .replace(/^\s+|\s+$/g, '')
+        .replace(/([.!?])\s+/g, '$1\n');
 
       setMessages(prev => prev.map((msg, index) => 
         index === prev.length - 1 ? { type: 'bot', content: botResponse } : msg
@@ -179,7 +238,27 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-indigo-900 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-orange-950 to-orange-900 flex flex-col items-center justify-center p-4">
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-4xl mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 rounded-xl shadow-lg p-4 border border-yellow-500"
+        >
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-6 h-6 text-white flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-white font-semibold text-sm">🎭 Demo Mode Active</p>
+              <p className="text-yellow-100 text-xs mt-1">
+                API keys not configured. The UI is fully functional but using simulated data. 
+                Configure environment variables to enable real website crawling and AI chat.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+      
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -207,7 +286,7 @@ function App() {
                 }}
                 className="flex items-center justify-center mb-8"
               >
-                <Globe className="w-12 h-12 text-indigo-400" />
+                <Globe className="w-12 h-12 text-orange-400" />
               </motion.div>
               <motion.h1 
                 initial={{ opacity: 0, y: 20 }}
@@ -236,14 +315,14 @@ function App() {
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://example.com"
-                  className="flex-1 px-4 py-3 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  className="flex-1 px-4 py-3 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
                 />
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={processWebsite}
                   disabled={isProcessing}
-                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium flex items-center gap-2 disabled:opacity-70 transition-all duration-200"
+                  className="px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white rounded-lg font-medium flex items-center gap-2 disabled:opacity-70 transition-all duration-200"
                 >
                   {isProcessing ? (
                     <motion.div className="flex items-center gap-2">
@@ -276,7 +355,7 @@ function App() {
                         <motion.div
                           animate={{ rotate: 360 }}
                           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full"
+                          className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full"
                         />
                         {step}
                       </motion.div>
@@ -318,7 +397,7 @@ function App() {
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                        className="w-8 h-8 rounded-full bg-indigo-900/50 flex items-center justify-center"
+                        className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-900/50 to-orange-800/50 flex items-center justify-center"
                       >
                         <span role="img" aria-label="fire" className="text-xl">🔥</span>
                       </motion.div>
@@ -329,7 +408,7 @@ function App() {
                       transition={{ type: "spring", stiffness: 260, damping: 20 }}
                       className={`max-w-[70%] rounded-2xl px-4 py-2 ${
                         message.type === 'user' 
-                          ? 'bg-indigo-600 text-white' 
+                          ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white' 
                           : 'bg-gray-700 text-gray-100'
                       }`}
                     >
@@ -365,13 +444,13 @@ function App() {
                     onChange={(e) => setCurrentMessage(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                     placeholder="Ask anything about the website..."
-                    className="flex-1 px-4 py-3 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                    className="flex-1 px-4 py-3 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
                   />
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={sendMessage}
-                    className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium flex items-center gap-2 transition-all duration-200"
+                    className="px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white rounded-lg font-medium flex items-center gap-2 transition-all duration-200"
                   >
                     <Send className="w-5 h-5" />
                   </motion.button>
